@@ -1,0 +1,12 @@
+# config file for VS Code
+/.vscode
+
+# Python virtual environment - everything here can be crecreated
+/__pycache__
+/Include
+/Lib
+/Scripts
+/tcl
+
+# Python licence
+LICENSE.txt
