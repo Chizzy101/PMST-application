@@ -21,24 +21,24 @@ class Query():
     The number of points in the coord list must be <= 150, add check for this.
     """
 
-    GEOM_DICT = {
+    _GEOM_TYPE_DICT = {
         1: "Point",
         2: "Line",
         3: "Polygon",
         4: "Undefined",
     }
 
-    COORD_DICT = {
+    _COORD_TYPE_DICT = {
         1: "Decimal degrees",
         2: "Degrees minutes seconds",
         3: "Undefined",
     }
 
-    def __init__(self, name, **kwargs):
-        self.name = name
+    def __init__(self, file, **kwargs):
+        self.name = None
         self.coord_type = kwargs.get('coord_type', 3)
-        # need to call coord checker to make sure this kwarg meets criteria
-        self.coord_list = []
+        self.coord_list = None
+        self.geom_type = None
         self.buffer = kwargs.get('buffer', 1)
         self.email = kwargs.get('email', None)
 
@@ -50,13 +50,20 @@ class Query():
             self.geom_type = 4
 
     def set_geom_type(self, geom_type):
-        if geom_type in self.GEOM_DICT:
+        """Sets the geometry type of the query (point, line, area). This can't
+        be derived from PMST report except for the cases where there is one
+        coordinate pair (geometry must be a point) or two coordinate pairs
+        (geometry must be a line). Any case where three or more pairs of
+        coordinates occur could be either a line or an area. Any case with two
+        or more pairs of coordinates can't be a point.
+        """
+        if geom_type in self._GEOM_TYPE_DICT:
             self.geom_type = geom_type
         else:
             raise ValueError('geom_type out of range')
 
     def set_coord_type(self, coord_type):
-        if coord_type in self.COORD_DICT:
+        if coord_type in self._COORD_TYPE_DICT:
             self.coord_type = coord_type
         else:
             raise ValueError('coord_type out of range')
@@ -100,14 +107,31 @@ class Query():
     def set_buffer(self, buffer):
         """To do
         """
-        pass
+        try:
+            buffer_string = self.soup.find(
+                        "span", text=re.compile(r'(Buffer:)')
+                    ).text
+        except:
+            print("No buffer found")
+
+        def find_buffer(string):
+            try:
+                result = re.search(r"[-+]?\d*\.\d+|\d+", string)
+                return result.group()
+            except:
+                print("No date found")
+
+        try:
+            self.buffer = find_buffer(buffer_string)
+        except:
+            print("Buffer not set")
 
 
 class Report():
     """Creates instances of the PMST report object.
     """
 
-    FORMAT_DICT = {
+    _FORMAT_DICT = {
         1: "PDF",
         2: "HTML",
         3: "Undefined",
@@ -117,6 +141,7 @@ class Report():
         self.date = None
         self.email = None
         self.soup = None
+        self.buffer = None
         self.file_type = None
         self.url_list = None
         self.kef_list = None
@@ -126,7 +151,8 @@ class Report():
         self.description = None
         self._set_file_type(file)
         self._make_soup(file)
-        self.get_urls()
+        self._set_buffer()
+        self._get_urls()
         #self.get_kefs() - works, commented to stop hitting site
         self.get_parks()
         self.get_date()
@@ -135,9 +161,9 @@ class Report():
         """Checks if the file is a PDF or a HTML
         """
         if file.upper().endswith('.PDF'):
-            self.format = 1
+            self.file_type = 1
         elif file.upper().endswith('.HTML'):
-            self.format = 2
+            self.file_type = 2
         else:
             raise ValueError('File extension must be html or PDF')
 
@@ -150,7 +176,29 @@ class Report():
         except:
             print("Unable to create BS4 object")
 
-    def get_urls(self):
+    def _set_buffer(self):
+        """Set the buffer based on the PMST
+        """
+        try:
+            buffer_string = self.soup.find(
+                        "span", text=re.compile(r'(Buffer:)')
+                    ).text
+        except:
+            print("No buffer found")
+
+        def find_buffer(string):
+            try:
+                result = re.search(r"[-+]?\d*\.\d+|\d+", string)
+                return float(result.group())
+            except:
+                print("No date found")
+
+        try:
+            self.buffer = find_buffer(buffer_string)
+        except:
+            print("Buffer not set")
+
+    def _get_urls(self):
 
         url_list = []
 
@@ -168,8 +216,6 @@ class Report():
     def get_kefs(self):
         """Gets any Key Ecological Features that are in the PMST report url
         list, looks up the web page and the creates the KEF objects.
-        The string the regex uses is "sprat-public/action/kef" - any URL with
-        this should be a KEF.
         """
         if self.url_list:
             kef_list = []
@@ -196,7 +242,7 @@ class Report():
 
     def get_date(self):
         """Gets date the PMST report was generated. Date always comes in
-        DD/MM/YYYY HH:MM:SS format. I just want the date for now.
+        DD/MM/YYYY HH:MM:SS format.
         """
         try:
             date_string = self.soup.find(
