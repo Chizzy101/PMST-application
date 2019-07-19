@@ -142,6 +142,7 @@ class Report():
         self.email = None
         self.soup = None
         self.buffer = None
+        self.coord_dict = None
         self.file_type = None
         self.url_list = None
         self.kef_list = None
@@ -149,9 +150,10 @@ class Report():
         self.heritage_list = None
         self.biota_list = None
         self.description = None
+
         self._set_file_type(file)
         self._make_soup(file)
-        self._set_buffer()
+        self._get_buffer()
         self._get_urls()
         #self.get_kefs() - works, commented to stop hitting site
         self.get_parks()
@@ -176,8 +178,9 @@ class Report():
         except:
             print("Unable to create BS4 object")
 
-    def _set_buffer(self):
-        """Set the buffer based on the PMST
+    def _get_buffer(self):
+        """Get the buffer from PMST and set the attribute on the class
+        instance
         """
         try:
             buffer_string = self.soup.find(
@@ -197,6 +200,47 @@ class Report():
             self.buffer = find_buffer(buffer_string)
         except:
             print("Buffer not set")
+
+    def _get_coords(self):
+        """Get coordinates from PMST and set the attribute on the class
+        instance
+        """
+        coord_string = self.soup.find(
+                        "span", text=re.compile(r"[-+]?\d*\.\d+ [-+]?\d*\.\d+")
+                    ).text
+
+        coord_dict = {}
+
+        try:
+            coord_list = re.findall(r'[-+]?\d+.\d+', coord_string)
+            print(coord_list)
+
+            # empy list to append coordinates and make x,y pairs
+            coord_pair = []
+            # counter to serve as key in dict
+            key = 1
+
+            for coord in coord_list:
+                # adds a coordinate if the coord_pair list isn't full (i.e.
+                # length = 2)
+                if len(coord_pair) < 2:
+                    coord_pair.append(float(coord))
+                # If coord_pair list is a pair, add as value to the dict
+                # with key counter as key, empty the coord_pair list and
+                # increment the key counter. Finally add the coordinate to the
+                # empty list
+                elif len(coord_pair) == 2:
+                    coord_dict[key] = coord_pair
+                    coord_pair = []
+                    key += 1
+                    coord_pair.append(coord)
+                # add the final coor_pair list, as the loop doesn't catch this
+                # one
+                coord_dict[key] = coord_pair
+        except:
+            print("Nope")
+
+        self.coord_dict = coord_dict
 
     def _get_urls(self):
 
