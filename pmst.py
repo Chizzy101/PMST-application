@@ -154,10 +154,11 @@ class Report():
         self._set_file_type(file)
         self._make_soup(file)
         self._get_buffer()
+        self._get_coords()
+        self._get_date()
         self._get_urls()
         #self.get_kefs() - works, commented to stop hitting site
         self.get_parks()
-        self.get_date()
 
     def _set_file_type(self, file):
         """Checks if the file is a PDF or a HTML
@@ -242,6 +243,29 @@ class Report():
 
         self.coord_dict = coord_dict
 
+    def _get_date(self):
+        """Gets date the PMST report was generated. Date always comes in
+        DD/MM/YYYY HH:MM:SS format.
+        """
+        try:
+            date_string = self.soup.find(
+                        "span", text=re.compile(r'(Report created:)')
+                    ).text
+        except:
+            print("No report date found")
+
+        def find_date(string):
+            try:
+                result = re.search(r"\d{1,2}/\d{1,2}/\d{2}", string)
+                return result.group()
+            except:
+                print("No date found")
+
+        try:
+            self.date = datetime.datetime.strptime(find_date(date_string), "%d/%m/%y")
+        except:
+            print("Date not set")
+
     def _get_urls(self):
 
         url_list = []
@@ -274,7 +298,14 @@ class Report():
 
     def get_parks(self):
         """Gets parks listed in the PMST report. Not yet implemented, no URLs
-        for parks in the PMST report
+        for parks in the PMST report. Might be better to get these through a
+        spatial query - CAPAD 2016 is the data source that the PMST reports
+        point to
+        """
+        pass
+
+    def get_Tecs(self):
+        """Gets TECs. Not implemented.
         """
         pass
 
@@ -284,95 +315,39 @@ class Report():
         """
         pass
 
-    def get_date(self):
-        """Gets date the PMST report was generated. Date always comes in
-        DD/MM/YYYY HH:MM:SS format.
-        """
-        try:
-            date_string = self.soup.find(
-                        "span", text=re.compile(r'(Report created:)')
-                    ).text
-        except:
-            print("No report date found")
-
-        def find_date(string):
-            try:
-                result = re.search(r"\d{1,2}/\d{1,2}/\d{2}", string)
-                return result.group()
-            except:
-                print("No date found")
-
-        try:
-            self.date = datetime.datetime.strptime(find_date(date_string), "%d/%m/%y")
-        except:
-            print("Date not set")
-
     def get_biota(self):
         """Gets any species listed in SPRAT that are in the PMST report url
         list, looks up the SPRAT page and creates the biota object. The
         string the regex looks for is "sprat/public/publicspecies".
         """
 
-        for url in self.url_list:
-            if re.search('sprat/public/publicspecies', url):
-                response = requests.get(url)
-                response.raise_for_status()
-                # sprat_id = int(re.search(r'(\d+)$', url).group())
-                biota_soup = BeautifulSoup(response.text, "lxml")
-                status_text = biota_soup.find(
-                    "th", text="EPBC Act Listing Status"
-                ).findNext('td').text.upper()
-
-                biota = Biota(
-                    biota_soup.find("title").text,
-                    url=url,
-                    sprat_id=int(re.search(r'(\d+)$', url).group())
+        if self.url_list:
+            biota_list = []
+            for url in self.url_list:
+                if re.search('/cgi-bin/sprat/public/publicspecies', url):
+                    biota = Biota(
+                        url = url,
                     )
+                    biota_list.append(biota)
 
-                # looks for threatened status - add code here
-                # loop through the threatened list and look for each element in
-                # status_text if found, set object status
-                # probably a better way to do this with any()
-                # Also need to write test that catches the difference between
-                # "Endangered" and "critically endangered". If i just look for
-                # endangered as a string then critically endangered may be
-                # identified incorrectly
-                for status in biota.THREATENED_LIST:
-                    status_upper = status.upper()
-                    if re.search(status_upper, status_text):
-                        biota.threatened = status
-                        print("found one")
-
-                if biota.sprat_id in self.biota_dict:
-                    print("{0} ({2}) - {1} already in dictionary".format(
-                        biota.name,
-                        biota.sprat_id,
-                        biota.threatened,
-                    ))
-                else:
-                    self.biota_dict[biota.sprat_id] = biota
-                    print("Writing {0} ({2}) to biota list with ID {1}".format(
-                        biota.name,
-                        biota.sprat_id,
-                        biota.threatened,
-                    ))
-
+            self.biota_list = biota_list
 
 class ProtectedMatter():
     """Base class for matters protected under the EPBC Act within the PMST
     report.
     """
 
-    def __init__(self, name, url):
-        self.name = name
+    def __init__(self, url):
+        self.name = None
         self.url = url
+        self.soup = None
         self._get_html()
 
     def _get_html(self):
         response = requests.get(self.url)
         response.raise_for_status()
-        self.html = BeautifulSoup(response.text, "lxml")
-        print("HTML added to KEF object")
+        self.soup = BeautifulSoup(response.text, "lxml")
+        print("Protected Matter added to object")
 
 
 class Place(ProtectedMatter):
@@ -486,30 +461,22 @@ class Biota(ProtectedMatter):
         "Conservation Dependent",
         ]
 
-    def __init__(self, name, **kwargs):
-        self.name = name
-        self.html = None
-        self.bioregion = kwargs.get('status', None)
-        self.url = kwargs.get('url', None)
-        self.sprat_id = kwargs.get('sprat_id', None)
-        self.threatened = kwargs.get('threatened', None)
-        self.migratory = kwargs.get('migratory', False)
-        self.marine = kwargs.get('marine', False)
-        self.cetacean = kwargs.get('cetacean', False)
+    def __init__(self, url):
+        self.name = None
+        self.soup = None
+        self.sprat_id = None
+        self.url = None
+        self.threatened = None
+        self.migratory = None
+        self.marine = None
+        self.cetacean = None
         self.cons_advice = None
         self.listing_advice = None
         self.recovery_plan = None
+        super().__init__(url)
+        self.get_name()
 
-        self._set_cetacean_status()
-
-    def _get_html(self):
-        response = requests.get(self.url)
-        response.raise_for_status()
-        self.html = BeautifulSoup(response.text, "lxml")
-        print("HTML added to Biota object")
-
-    # Code not finished - checks the BS4 object to see if it contains EPBC Act
-    # status of "Cetacean"
-    #def _set_cetacean_status(self):
-    #    if self.html.find('td').find(string="Cetacean"):
-    #        self.cetacean = True
+    def get_name(self):
+        self.name = self.soup.find(
+            "title",
+        ).text
