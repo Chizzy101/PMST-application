@@ -138,6 +138,11 @@ class Report():
     }
 
     def __init__(self, file, **kwargs):
+        """Initialise class instance.
+        
+        Arguments:
+            file {html} -- HTML file containing PMST data
+        """
         self.date = None
         self.email = None
         self.soup = None
@@ -147,6 +152,7 @@ class Report():
         self.url_list = None
         self.kef_list = None
         self.park_list = None
+        self.tec_list = None
         self.heritage_list = None
         self.biota_list = None
         self.description = None
@@ -158,7 +164,8 @@ class Report():
         self._get_date()
         self._get_urls()
         #self.get_kefs() - works, commented to stop hitting site
-        self.get_parks()
+        self.get_tecs()
+        #self.get_biota() - 
 
     def _set_file_type(self, file):
         """Checks if the file is a PDF or a HTML
@@ -285,10 +292,12 @@ class Report():
         """Gets any Key Ecological Features that are in the PMST report url
         list, looks up the web page and the creates the KEF objects.
         """
+        re_string = 'sprat-public/action/kef'
+
         if self.url_list:
             kef_list = []
             for url in self.url_list:
-                if re.search('sprat-public/action/kef', url):
+                if re.search(re_string, url):
                     kef = Kef(
                         url=url,
                         )
@@ -304,10 +313,22 @@ class Report():
         """
         pass
 
-    def get_Tecs(self):
-        """Gets TECs. Not implemented.
+    def get_tecs(self):
+        """Gets TECs.
         """
-        pass
+
+        re_string = 'cgi-bin/sprat/public/publicshowcommunity'
+
+        if self.url_list:
+            tec_list = []
+            for url in self.url_list:
+                if re.search(re_string, url):
+                    tec = Tec(
+                        url=url,
+                        )
+                    tec_list.append(tec)
+
+            self.tec_list = tec_list
 
     def get_heritage(self):
         """Gets heritage places from the PMST report and created heritage
@@ -347,7 +368,7 @@ class ProtectedMatter():
         response = requests.get(self.url)
         response.raise_for_status()
         self.soup = BeautifulSoup(response.text, "lxml")
-        print("Protected Matter added to object")
+        print(r"Protected Matter added to object {0}".format(self.url))
 
 
 class Place(ProtectedMatter):
@@ -362,31 +383,40 @@ class Tec(Place):
     These will have the string "/sprat/public/publicshowcommunity" in the URL.
     """
 
+    # The order of this list is important, need to look for critically
+    # endangered first, else 'endangered' may give an incorrect match
     TEC_CAT_LIST = [
-    'critically endangered',
-    'endangered',
-    'vulnerable',
+    'Critically Endangered',
+    'Endangered',
+    'Vulnerable',
     ]
 
-    def __init__(self, name):
-        super().__init__(name)
-        super()._get_html
+    def __init__(self, url):
+        self.category = None
+        self.soup = None
+        self.name = None
+        self.url = None
+
+        super().__init__(url)
+        self.get_name()
         self.set_cat()
-        self.url = kwargs.get('url', None)
+
+    def get_name(self):
+        self.name = self.soup.find(
+            "title",
+        ).text
 
     def set_cat(self):
-        """Method to get the TEC category from the BS4 object
-        """
-        # include code to get the category from the BS4 object
-        lower_cat = str.lower(cat)
-        print("Lower cat is {0}".format(lower_cat))
-        
-        if lower_cat in TEC_CAT_LIST:
-            self.cat = lower_cat
-            print("It's in the list! Category is {0}".format(lower_cat))
-        else:
-            raise CatException("Exception: the category argument isn't in the TEC_CAT_LIST")
-
+        for category in self.TEC_CAT_LIST:
+            regex = re.compile(category)
+            print(r"Searching for {0}".format(category))
+            if self.soup.find("td", text=regex):
+                self.category = category
+                print(r"Category set to {0}".format(self.category))
+                break
+            else:
+                print("No match for category found")
+                
 
 class Park(Place):
     """Class for parks and protected areas. Uased as bass class for more

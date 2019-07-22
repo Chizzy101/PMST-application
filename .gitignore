@@ -8,5 +8,8 @@
 /Scripts
 /tcl
 
+# static html examples (threatened fauna etc.)
+/html
+
 # Python licence
 LICENSE.txt
