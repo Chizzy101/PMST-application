@@ -34,7 +34,7 @@ class Query():
         3: "Undefined",
     }
 
-    def __init__(self, file, **kwargs):
+    def __init__(self, **kwargs):
         self.name = None
         self.coord_type = kwargs.get('coord_type', 3)
         self.coord_list = None
@@ -63,6 +63,18 @@ class Query():
             raise ValueError('geom_type out of range')
 
     def set_coord_type(self, coord_type):
+        """Sets the coordinate type for the query. Used when querying the PMST
+        report page.
+        
+        Arguments:
+            coord_type {str} -- coordinate type from class variable
+            _COORD_TYPE_DICT
+        
+        Raises:
+            ValueError: Exception generated if coord_type argument is not a
+            value within _COORD_TYPE_DICT
+        """
+        
         if coord_type in self._COORD_TYPE_DICT:
             self.coord_type = coord_type
         else:
