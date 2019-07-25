@@ -164,8 +164,8 @@ class Report():
         self._get_date()
         self._get_urls()
         #self.get_kefs() - works, commented to stop hitting site
-        self.get_tecs()
-        #self.get_biota() - 
+        #self.get_tecs()
+        self.get_biota()
 
     def _set_file_type(self, file):
         """Checks if the file is a PDF or a HTML
@@ -483,8 +483,8 @@ class Biota(ProtectedMatter):
     """
 
     THREATENED_LIST = [
-        "Extinct",
         "Extinct in the Wild",
+        "Extinct",
         "Critically Endangered",
         "Endangered",
         "Vulnerable",
@@ -505,8 +505,20 @@ class Biota(ProtectedMatter):
         self.recovery_plan = None
         super().__init__(url)
         self.get_name()
+        self.set_cat()
 
     def get_name(self):
         self.name = self.soup.find(
             "title",
         ).text
+
+    def set_cat(self):
+        for category in self.THREATENED_LIST:
+            regex = re.compile(category)
+            print(r"Searching for {0}".format(category))
+            if self.soup.find("td", text=regex):
+                self.category = category
+                print(r"Category set to {0}".format(self.category))
+                break
+            else:
+                print("No match for category found")

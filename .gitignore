@@ -11,5 +11,8 @@
 # static html examples (threatened fauna etc.)
 /html
 
+# testing cache
+/.pytest_cache
+/tests/__pycache__
 # Python licence
 LICENSE.txt
