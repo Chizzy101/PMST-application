@@ -163,6 +163,7 @@ class Report():
         self.file_type = None
         self.url_list = None
         self.kef_list = None
+        self.kef_url_list = None
         self.park_list = None
         self.tec_list = None
         self.heritage_list = None
@@ -177,7 +178,7 @@ class Report():
         self._get_urls()
         #self.get_kefs() - works, commented to stop hitting site
         #self.get_tecs()
-        self.get_biota()
+        #self.get_biota()
 
     def _set_file_type(self, file):
         """Checks if the file is a PDF or a HTML
@@ -296,26 +297,29 @@ class Report():
                 pass
             else:
                 url_list.append(url.get("href"))
-        
         url_list.sort()
         self.url_list = url_list
+        
 
     def get_kefs(self):
         """Gets any Key Ecological Features that are in the PMST report url
         list, looks up the web page and the creates the KEF objects.
         """
-        re_string = 'sprat-public/action/kef'
+        
+        kef_re_string = 'sprat-public/action/kef'
+        kef_list = []
 
         if self.url_list:
-            kef_list = []
-            for url in self.url_list:
-                if re.search(re_string, url):
-                    kef = Kef(
-                        url=url,
-                        )
-                    kef_list.append(kef)
+            kef_url_list = [url for url in self.url_list if re.search(kef_re_string, url)]
+            for url in kef_url_list:
+                kef = Kef(
+                    url=url,
+                    )
+                kef_list.append(kef)
+        else:
+            pass
 
-            self.kef_list = kef_list
+        self.kef_list = kef_list
 
     def get_parks(self):
         """Gets parks listed in the PMST report. Not yet implemented, no URLs
