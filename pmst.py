@@ -333,18 +333,20 @@ class Report():
         """Gets TECs.
         """
 
-        re_string = 'cgi-bin/sprat/public/publicshowcommunity'
+        tec_re_string = 'cgi-bin/sprat/public/publicshowcommunity'
+        tec_list = []
 
         if self.url_list:
-            tec_list = []
-            for url in self.url_list:
-                if re.search(re_string, url):
-                    tec = Tec(
-                        url=url,
-                        )
-                    tec_list.append(tec)
-
-            self.tec_list = tec_list
+            tec_url_list = [url for url in self.url_list if re.search(tec_re_string, url)]
+            for url in tec_url_list: 
+                tec = Tec(
+                    url=url,
+                    )
+                tec_list.append(tec)
+        else:
+            pass
+        
+        self.tec_list = tec_list
 
     def get_heritage(self):
         """Gets heritage places from the PMST report and created heritage
