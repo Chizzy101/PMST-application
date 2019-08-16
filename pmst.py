@@ -65,16 +65,16 @@ class Query():
     def set_coord_type(self, coord_type):
         """Sets the coordinate type for the query. Used when querying the PMST
         report page.
-        
+
         Arguments:
             coord_type {str} -- coordinate type from class variable
             _COORD_TYPE_DICT
-        
+
         Raises:
             ValueError: Exception generated if coord_type argument is not a
             value within _COORD_TYPE_DICT
         """
-        
+
         if coord_type in self._COORD_TYPE_DICT:
             self.coord_type = coord_type
         else:
@@ -123,19 +123,19 @@ class Query():
             buffer_string = self.soup.find(
                         "span", text=re.compile(r'(Buffer:)')
                     ).text
-        except:
+        except ValueError:
             print("No buffer found")
 
         def find_buffer(string):
             try:
                 result = re.search(r"[-+]?\d*\.\d+|\d+", string)
                 return result.group()
-            except:
+            except ValueError:
                 print("No date found")
 
         try:
             self.buffer = find_buffer(buffer_string)
-        except:
+        except ValueError:
             print("Buffer not set")
 
 
@@ -151,7 +151,7 @@ class Report():
 
     def __init__(self, file, **kwargs):
         """Initialise class instance.
-        
+
         Arguments:
             file {html} -- HTML file containing PMST data
         """
@@ -163,7 +163,6 @@ class Report():
         self.file_type = None
         self.url_list = None
         self.kef_list = None
-        self.kef_url_list = None
         self.park_list = None
         self.tec_list = None
         self.heritage_list = None
@@ -176,9 +175,10 @@ class Report():
         self._get_coords()
         self._get_date()
         self._get_urls()
-        #self.get_kefs() - works, commented to stop hitting site
-        #self.get_tecs()
-        #self.get_biota()
+        # self._get_kefs() - works, commented to stop hitting site
+        # self.get_tecs()
+        # self.get_biota()
+        self.get_heritage()
 
     def _set_file_type(self, file):
         """Checks if the file is a PDF or a HTML
@@ -287,21 +287,29 @@ class Report():
             print("Date not set")
 
     def _get_urls(self):
-
+        """Gets URLs from BS4 object. Requires PMST report to have been
+        created for the Report object.
+        """
         url_list = []
 
-        for url in self.soup.find_all("a"):
-            if url.get("href") is None:
-                pass
-            elif url.get("href") in url_list:
-                pass
-            else:
-                url_list.append(url.get("href"))
-        url_list.sort()
-        self.url_list = url_list
-        
+        if not self.soup:
+            print("Soup attribute for Report object does not exist.")
+            return None
 
-    def get_kefs(self):
+        try:
+            for url in self.soup.find_all("a"):
+                if url.get("href") is None:
+                    pass
+                elif url.get("href") in url_list:
+                    pass
+                else:
+                    url_list.append(url.get("href"))
+            url_list.sort()
+            self.url_list = url_list
+        except ValueError:
+            print("Unable to get URLs from PMST report.")
+
+    def _get_kefs(self):
         """Gets any Key Ecological Features that are in the PMST report url
         list, looks up the web page and the creates the KEF objects.
         """
@@ -352,7 +360,21 @@ class Report():
         """Gets heritage places from the PMST report and created heritage
         objects.
         """
-        pass
+
+        heritage_re_string = "www.environment.gov.au/cgi-bin/ahdb/"
+        heritage_list = []
+
+        try:
+            heritage_url_list = [url for url in self.url_list if re.search(heritage_re_string, url)]
+            for url in heritage_url_list: 
+                heritage = Heritage(
+                    url=url,
+                    )
+                heritage_list.append(heritage)
+        except ValueError:
+            print("Attribute url_list does not contain valid urls")
+            
+        self.heritage_list = heritage_list                
 
     def get_biota(self):
         """Gets any species listed in SPRAT that are in the PMST report url
@@ -365,7 +387,7 @@ class Report():
             for url in self.url_list:
                 if re.search('/cgi-bin/sprat/public/publicspecies', url):
                     biota = Biota(
-                        url = url,
+                        url=url,
                     )
                     biota_list.append(biota)
 
@@ -396,6 +418,32 @@ class Place(ProtectedMatter):
     pass
 
 
+class Heritage(Place):
+    """Base class for heritage places (World, Commonwealth or National
+    heritage).
+
+    Arguments:
+        Place {class} -- Heritage inherits from class Place
+    """
+    
+    HERITAGE_TYPE_DICT = {
+        1: "World heritage place",
+        2: "National heritage place",
+        3: "Commonwealth heritage place",
+    }
+
+    def __init__(self, url):
+        self.name = None
+        self.category = None # category of heritage place (e.g. historic, 
+        # natural etc.)
+        self.type = None # type of heritage place (e.g. national, world etc.)
+        self.status = None # status (listed, application etc.)
+        self.id = None # ID form the AHDB - 6 digit int - looks like PK from DB
+        self.url = url
+        self.soup = None
+        self._get_html()
+
+
 class Tec(Place):
     """Class for Threatened Ecological Communities (TECs).
     These will have the string "/sprat/public/publicshowcommunity" in the URL.
@@ -404,9 +452,9 @@ class Tec(Place):
     # The order of this list is important, need to look for critically
     # endangered first, else 'endangered' may give an incorrect match
     TEC_CAT_LIST = [
-    'Critically Endangered',
-    'Endangered',
-    'Vulnerable',
+        'Critically Endangered',
+        'Endangered',
+        'Vulnerable',
     ]
 
     def __init__(self, url):

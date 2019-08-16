@@ -101,7 +101,7 @@ Class for threatened ecological communities (TECs). Inherits from Place.
 
 * status - string - status under the EPBC Act, same list as threatened fauna. Inherit this from fauna class
 
-#### Teec() Methods
+#### Tec() Methods
 
 * \_\_init__()
 
@@ -117,16 +117,24 @@ class Report{
 +description : string
 +date : datetime.datetime
 +email : string
++soup : BeautifulSoup object
++buffer : float
++coord_dict : dictionary
++file_type : string
 +url_list : list
 +kef_list : list
 +park_list : list
 +heritage_list : list
 +biota_list : list
++description : string
 
 -__init__(self, file, **kwargs)
-+get_date(self)
-+get_email(self)
-+get_urls(self)
++_set_file_type(self, file)
++_make_soup(self, file)
++_get_buffer(self)
++_get_coords(self)
++_get_date(self)
++_get_urls(self)
 +get_kefs(self)
 +get_parks(self)
 +get_heritage(self)
