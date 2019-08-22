@@ -13,14 +13,14 @@ There are several dependancies for this project from the Python 3.7 standard lib
   * [Beautiful Soup (4.4.0)](https://www.crummy.com/software/BeautifulSoup/bs4/doc/#) - scraping HTML
   * [Requests (2.22.0)](https://2.python-requests.org/en/master/) - http requests
 * Standard library packages:
-  * [re (Python 3.7)](https://docs.python.org/3/library/re.html) - regular expressions
+  * [re (Python 3.7)](https://docs.python.org/3/library/re.html) - regular expressions for selecting elements of the BS4 objects used to represent the PMST report
   * [datetime (Python 3.7)](https://docs.python.org/3/library/datetime.html) - date type
 
 THe PMST project has only been tested using the versions listed above.
 
 ## Classes
 
-All of the classes in pmst.py are described below (including attributes and methods). While types have been provided in the descriptions of class attributes and method arguments, they are not currently implemented in the Python classes. The types are intended to aid indatabase schema development, and who knows...maybe I'll implement type hints or static typing.
+All of the classes in `pmst.py` are described below (including attributes and methods). While types have been provided in the descriptions of class attributes and method arguments, they are not currently statically typed in the classes in `pmst.py`. The types are intended to aid indatabase schema development, and who knows...maybe I'll implement type hints or static typing.
 
 The inheritance relationships between classes are shown in the figure below (generated using PlantUML at <http://plantuml.com/).> The file containing the PlantUML code is here.
 
@@ -113,11 +113,10 @@ Use this with PlantUML to generate class digrams.
 @startuml
 ' Base class for all protected matters
 class Report{
--FORMAT_DICT : dictionary
+-_FORMAT_DICT : dictionary
 +description : string
 +date : datetime.datetime
-+email : string
-+soup : BeautifulSoup object
++_soup : BeautifulSoup object
 +buffer : float
 +coord_dict : dictionary
 +file_type : string

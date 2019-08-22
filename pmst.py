@@ -120,7 +120,7 @@ class Query():
         """To do
         """
         try:
-            buffer_string = self.soup.find(
+            buffer_string = self._soup.find(
                         "span", text=re.compile(r'(Buffer:)')
                     ).text
         except ValueError:
@@ -156,10 +156,9 @@ class Report():
             file {html} -- HTML file containing PMST data
         """
         self.date = None
-        self.email = None
-        self.soup = None
+        self._soup = None
         self.buffer = None
-        self.coord_dict = None
+        self._coord_dict = None
         self.file_type = None
         self.url_list = None
         self.kef_list = None
@@ -176,9 +175,10 @@ class Report():
         self._get_date()
         self._get_urls()
         # self._get_kefs() - works, commented to stop hitting site
-        # self.get_tecs()
-        # self.get_biota()
-        self.get_heritage()
+        # self._get_tecs()
+        # self._get_biota()
+        # self._get_parks()
+        self._get_heritage()
 
     def _set_file_type(self, file):
         """Checks if the file is a PDF or a HTML
@@ -195,7 +195,7 @@ class Report():
         """
         try:
             with open(file) as html:
-                self.soup = BeautifulSoup(html, "lxml")
+                self._soup = BeautifulSoup(html, "lxml")
         except:
             print("Unable to create BS4 object")
 
@@ -204,7 +204,7 @@ class Report():
         instance
         """
         try:
-            buffer_string = self.soup.find(
+            buffer_string = self._soup.find(
                         "span", text=re.compile(r'(Buffer:)')
                     ).text
         except:
@@ -226,7 +226,7 @@ class Report():
         """Get coordinates from PMST and set the attribute on the class
         instance
         """
-        coord_string = self.soup.find(
+        coord_string = self._soup.find(
                         "span", text=re.compile(r"[-+]?\d*\.\d+ [-+]?\d*\.\d+")
                     ).text
 
@@ -261,14 +261,14 @@ class Report():
         except:
             print("Nope")
 
-        self.coord_dict = coord_dict
+        self._coord_dict = coord_dict
 
     def _get_date(self):
         """Gets date the PMST report was generated. Date always comes in
         DD/MM/YYYY HH:MM:SS format.
         """
         try:
-            date_string = self.soup.find(
+            date_string = self._soup.find(
                         "span", text=re.compile(r'(Report created:)')
                     ).text
         except:
@@ -292,12 +292,12 @@ class Report():
         """
         url_list = []
 
-        if not self.soup:
-            print("Soup attribute for Report object does not exist.")
+        if not self._soup:
+            print("_soup attribute for Report object does not exist.")
             return None
 
         try:
-            for url in self.soup.find_all("a"):
+            for url in self._soup.find_all("a"):
                 if url.get("href") is None:
                     pass
                 elif url.get("href") in url_list:
@@ -329,7 +329,7 @@ class Report():
 
         self.kef_list = kef_list
 
-    def get_parks(self):
+    def _get_parks(self):
         """Gets parks listed in the PMST report. Not yet implemented, no URLs
         for parks in the PMST report. Might be better to get these through a
         spatial query - CAPAD 2016 is the data source that the PMST reports
@@ -337,7 +337,7 @@ class Report():
         """
         pass
 
-    def get_tecs(self):
+    def _get_tecs(self):
         """Gets TECs.
         """
 
@@ -345,18 +345,22 @@ class Report():
         tec_list = []
 
         if self.url_list:
-            tec_url_list = [url for url in self.url_list if re.search(tec_re_string, url)]
-            for url in tec_url_list: 
-                tec = Tec(
-                    url=url,
-                    )
-                tec_list.append(tec)
+            try:
+                tec_url_list = [url for url in self.url_list if re.search(tec_re_string, url)]
+                for url in tec_url_list: 
+                    tec = Tec(
+                        url=url,
+                        )
+                    tec_list.append(tec)
+            except ValueError:
+                print("Unable to create TEC from URL list")
         else:
-            pass
+            print("URL list for report object does not exist. "
+                "Unable to get TECs")
         
         self.tec_list = tec_list
 
-    def get_heritage(self):
+    def _get_heritage(self):
         """Gets heritage places from the PMST report and created heritage
         objects.
         """
@@ -376,7 +380,7 @@ class Report():
             
         self.heritage_list = heritage_list                
 
-    def get_biota(self):
+    def _get_biota(self):
         """Gets any species listed in SPRAT that are in the PMST report url
         list, looks up the SPRAT page and creates the biota object. The
         string the regex looks for is "sprat/public/publicspecies".
@@ -398,17 +402,29 @@ class ProtectedMatter():
     report.
     """
 
-    def __init__(self, url):
+    def __init__(self, **kwargs):
+        """Dunder method to initialise the class. Can accept **kwargs.
+        Recommend passing url as kwarg if available, as url is used to
+        fetch the html that gets scraped.
+        
+        Arguments:
+            name {str} -- Name of the Protected Matter
+            url {str} -- URL for the Protected Matter
+
+        """
         self.name = None
-        self.url = url
-        self.soup = None
+        self.url = kwargs.get('url', None)
+        self._soup = None
         self._get_html()
 
     def _get_html(self):
         response = requests.get(self.url)
         response.raise_for_status()
-        self.soup = BeautifulSoup(response.text, "lxml")
-        print(r"Protected Matter added to object {0}".format(self.url))
+        self._soup = BeautifulSoup(response.text, "lxml")
+        print(f"Protected Matter added to object from url {self.url}")
+
+    def __str__(self):
+        return "ProtectedMatter object\n  Name: {0}\n  URL: {1}".format(self.name, self.url)
 
 
 class Place(ProtectedMatter):
@@ -440,7 +456,7 @@ class Heritage(Place):
         self.status = None # status (listed, application etc.)
         self.id = None # ID form the AHDB - 6 digit int - looks like PK from DB
         self.url = url
-        self.soup = None
+        self._soup = None
         self._get_html()
 
 
@@ -458,17 +474,14 @@ class Tec(Place):
     ]
 
     def __init__(self, url):
-        self.category = None
-        self.soup = None
-        self.name = None
-        self.url = None
-
         super().__init__(url)
+        self.url = url
+        self.category = None
         self.get_name()
         self.set_cat()
 
     def get_name(self):
-        self.name = self.soup.find(
+        self.name = self._soup.find(
             "title",
         ).text
 
@@ -476,7 +489,7 @@ class Tec(Place):
         for category in self.TEC_CAT_LIST:
             regex = re.compile(category)
             print(r"Searching for {0}".format(category))
-            if self.soup.find("td", text=regex):
+            if self._soup.find("td", text=regex):
                 self.category = category
                 print(r"Category set to {0}".format(self.category))
                 break
@@ -557,11 +570,9 @@ class Biota(ProtectedMatter):
         "Conservation Dependent",
         ]
 
-    def __init__(self, url):
-        self.name = None
-        self.soup = None
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.sprat_id = None
-        self.url = None
         self.threatened = None
         self.migratory = None
         self.marine = None
@@ -569,12 +580,11 @@ class Biota(ProtectedMatter):
         self.cons_advice = None
         self.listing_advice = None
         self.recovery_plan = None
-        super().__init__(url)
         self.get_name()
         self.set_cat()
 
     def get_name(self):
-        self.name = self.soup.find(
+        self.name = self._soup.find(
             "title",
         ).text
 
@@ -582,9 +592,9 @@ class Biota(ProtectedMatter):
         for category in self.THREATENED_LIST:
             regex = re.compile(category)
             print(r"Searching for {0}".format(category))
-            if self.soup.find("td", text=regex):
+            if self._soup.find("strong", text=regex):
                 self.category = category
-                print(r"Category set to {0}".format(self.category))
+                print(r"Threatened set to {0}".format(self.category))
                 break
             else:
                 print("No match for category found")
