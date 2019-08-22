@@ -196,7 +196,7 @@ class Report():
         try:
             with open(file) as html:
                 self._soup = BeautifulSoup(html, "lxml")
-        except:
+        except ValueError:
             print("Unable to create BS4 object")
 
     def _get_buffer(self):
@@ -207,19 +207,19 @@ class Report():
             buffer_string = self._soup.find(
                         "span", text=re.compile(r'(Buffer:)')
                     ).text
-        except:
+        except ValueError:
             print("No buffer found")
 
         def find_buffer(string):
             try:
                 result = re.search(r"[-+]?\d*\.\d+|\d+", string)
                 return float(result.group())
-            except:
+            except ValueError:
                 print("No date found")
 
         try:
             self.buffer = find_buffer(buffer_string)
-        except:
+        except ValueError:
             print("Buffer not set")
 
     def _get_coords(self):
@@ -258,7 +258,7 @@ class Report():
                 # add the final coor_pair list, as the loop doesn't catch this
                 # one
                 coord_dict[key] = coord_pair
-        except:
+        except ValueError:
             print("Nope")
 
         self._coord_dict = coord_dict
@@ -271,19 +271,22 @@ class Report():
             date_string = self._soup.find(
                         "span", text=re.compile(r'(Report created:)')
                     ).text
-        except:
+        except ValueError:
             print("No report date found")
 
         def find_date(string):
             try:
                 result = re.search(r"\d{1,2}/\d{1,2}/\d{2}", string)
                 return result.group()
-            except:
+            except ValueError:
                 print("No date found")
 
         try:
-            self.date = datetime.datetime.strptime(find_date(date_string), "%d/%m/%y")
-        except:
+            self.date = datetime.datetime.strptime(
+                find_date(date_string),
+                "%d/%m/%y",
+                )
+        except ValueError:
             print("Date not set")
 
     def _get_urls(self):
@@ -313,16 +316,17 @@ class Report():
         """Gets any Key Ecological Features that are in the PMST report url
         list, looks up the web page and the creates the KEF objects.
         """
-        
+
         kef_re_string = 'sprat-public/action/kef'
         kef_list = []
 
         if self.url_list:
-            kef_url_list = [url for url in self.url_list if re.search(kef_re_string, url)]
+            kef_url_list = [
+                url for url in self.url_list if re.search(
+                    kef_re_string, url
+                    )]
             for url in kef_url_list:
-                kef = Kef(
-                    url=url,
-                    )
+                kef = Kef(url=url)
                 kef_list.append(kef)
         else:
             pass
@@ -346,8 +350,11 @@ class Report():
 
         if self.url_list:
             try:
-                tec_url_list = [url for url in self.url_list if re.search(tec_re_string, url)]
-                for url in tec_url_list: 
+                tec_url_list = [
+                    url for url in self.url_list if re.search(
+                        tec_re_string, url
+                        )]
+                for url in tec_url_list:
                     tec = Tec(
                         url=url,
                         )
@@ -356,8 +363,8 @@ class Report():
                 print("Unable to create TEC from URL list")
         else:
             print("URL list for report object does not exist. "
-                "Unable to get TECs")
-        
+                  "Unable to get TECs")
+
         self.tec_list = tec_list
 
     def _get_heritage(self):
@@ -369,16 +376,19 @@ class Report():
         heritage_list = []
 
         try:
-            heritage_url_list = [url for url in self.url_list if re.search(heritage_re_string, url)]
-            for url in heritage_url_list: 
+            heritage_url_list = [
+                url for url in self.url_list if re.search(
+                    heritage_re_string, url
+                    )]
+            for url in heritage_url_list:
                 heritage = Heritage(
                     url=url,
                     )
                 heritage_list.append(heritage)
         except ValueError:
             print("Attribute url_list does not contain valid urls")
-            
-        self.heritage_list = heritage_list                
+
+        self.heritage_list = heritage_list
 
     def _get_biota(self):
         """Gets any species listed in SPRAT that are in the PMST report url
@@ -397,6 +407,7 @@ class Report():
 
             self.biota_list = biota_list
 
+
 class ProtectedMatter():
     """Base class for matters protected under the EPBC Act within the PMST
     report.
@@ -406,10 +417,10 @@ class ProtectedMatter():
         """Dunder method to initialise the class. Can accept **kwargs.
         Recommend passing url as kwarg if available, as url is used to
         fetch the html that gets scraped.
-        
+
         Arguments:
-            name {str} -- Name of the Protected Matter
-            url {str} -- URL for the Protected Matter
+            name {str} -- Keyword argument, name of the Protected Matter
+            url {str} -- Keyword argument, URL for the Protected Matter
 
         """
         self.name = None
@@ -424,7 +435,9 @@ class ProtectedMatter():
         print(f"Protected Matter added to object from url {self.url}")
 
     def __str__(self):
-        return "ProtectedMatter object\n  Name: {0}\n  URL: {1}".format(self.name, self.url)
+        return "ProtectedMatter object\n  Name: {0}\n  URL: {1}".format(
+            self.name, self.url
+            )
 
 
 class Place(ProtectedMatter):
@@ -441,7 +454,7 @@ class Heritage(Place):
     Arguments:
         Place {class} -- Heritage inherits from class Place
     """
-    
+
     HERITAGE_TYPE_DICT = {
         1: "World heritage place",
         2: "National heritage place",
@@ -450,11 +463,10 @@ class Heritage(Place):
 
     def __init__(self, url):
         self.name = None
-        self.category = None # category of heritage place (e.g. historic, 
-        # natural etc.)
-        self.type = None # type of heritage place (e.g. national, world etc.)
-        self.status = None # status (listed, application etc.)
-        self.id = None # ID form the AHDB - 6 digit int - looks like PK from DB
+        self.category = None  # category of heritage place
+        self.type = None  # type of heritage place (e.g. national, world etc.)
+        self.status = None  # status (listed, application etc.)
+        self.id = None  # ID form the AHDB - 6 digit int - PK from DB?
         self.url = url
         self._soup = None
         self._get_html()
@@ -495,7 +507,7 @@ class Tec(Place):
                 break
             else:
                 print("No match for category found")
-                
+
 
 class Park(Place):
     """Class for parks and protected areas. Uased as bass class for more
@@ -512,6 +524,7 @@ class Amp(Park):
 
 class Kef(Place):
     """Class for Key Ecological Features (KEFs)
+
     """
 
     def __init__(self, **kwargs):
