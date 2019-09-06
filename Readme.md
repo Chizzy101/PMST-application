@@ -109,6 +109,8 @@ Class for threatened ecological communities (TECs). Inherits from Place.
 
 Use this with PlantUML to generate class digrams.
 
+## Report Class
+
 ```PlantUML
 @startuml
 ' Base class for all protected matters
@@ -139,12 +141,49 @@ class Report{
 +get_heritage(self)
 +get_biota(self)
 }
+@enduml
+```
 
-ProtectedMatter --|> Place
-ProtectedMatter --|> Biota
-Place --|> Tec
-Place --|> Park
-Place --|> Kef
-Place --|> Heritage
+## ProtectedMatters Class Tree
+
+Shows the super and subclasses used to create Protected Matters objects.
+
+```PlantUML
+@startuml
+ProtectedMatter <|-- Place
+Place <|-- Heritage
+
+' Base class for all protected matters
+class ProtectedMatter{
++name: string
++url: string
++_soup: BeautifulSoup object
+
+-__init__(self, **kwargs)
+-_get_html(self)
++__str__(self)
+}
+
+class Place{
++^name: string
++^url: string
++^_soup: BeautifulSoup object
+
+-^__init__(self, **kwargs)
+-^_get_html(self)
++^__str__(self)
+}
+
+class Heritage{
++^name: string
++^url: string
++^_soup: BeautifulSoup object
++HERIAGE_TYPE_DICT = dictionary
++category: string
+
+-^__init__(self, **kwargs)
+-^_get_html(self)
++^__str__(self)
+}
 @enduml
 ```

@@ -593,21 +593,59 @@ class Biota(ProtectedMatter):
         self.cons_advice = None
         self.listing_advice = None
         self.recovery_plan = None
-        self.get_name()
+        self.set_sprat_id()
+        self.set_epbc_status_list()
+        self.get_common_name()
+        self.get_scientific_name()
         self.set_cat()
+        self.set_migratory()
+        self.set_cetacean()
+        self.set_marine()
 
-    def get_name(self):
-        self.name = self._soup.find(
+    def get_common_name(self):
+        self.common_name = self._soup.find(
             "title",
         ).text
+
+    def set_sprat_id(self):
+        self.sprat_id = int(self.url.split("=")[1])
+        print(self.sprat_id)
+
+    def set_epbc_status_list(self):
+        self.epbc_status_list = self._soup.find(
+            "th",
+            text="EPBC Act Listing Status",
+            ).find_next("td").contents
+
+    def get_scientific_name(self):
+        self.scientific_name = self._soup.find(
+            "th",
+            text='Scientific name',
+            ).find_next("i").contents
+
+    def set_migratory(self):
+        for status in self.epbc_status_list:
+            if 'Listed migratory' in status.__str__():
+                self.migratory = True
+            else:
+                self.migratory = False
+
+    def set_marine(self):
+        for status in self.epbc_status_list:
+            if 'Listed marine' in status.__str__():
+                self.marine = True
+            else:
+                self.marine = False
+
+    def set_cetacean(self):
+        for status in self.epbc_status_list:
+            if 'Cetacean' in status.__str__():
+                self.cetacean = True
+            else:
+                self.cetacean = False
 
     def set_cat(self):
         for category in self.THREATENED_LIST:
             regex = re.compile(category)
-            print(r"Searching for {0}".format(category))
             if self._soup.find("strong", text=regex):
                 self.category = category
-                print(r"Threatened set to {0}".format(self.category))
-                break
-            else:
-                print("No match for category found")

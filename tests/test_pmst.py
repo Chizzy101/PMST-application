@@ -51,7 +51,7 @@ tec_crit = TestTec(".\\tests\\html\\tec_crit_end.html")
 tec_end = TestTec(".\\tests\\html\\tec_end.html")
 tec_vul = TestTec(".\\tests\\html\\tec_vul.html")
 
-
+# TEC tests
 def test_tec_find_category_crit_end():
     """Tests that a critically endangered TEC doesn't get classified as an
     endangered or vulnerable TEC. Uses .html file in .\\tests\\html
